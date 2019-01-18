@@ -25,6 +25,7 @@ import (
 	"github.com/lucas-clemente/quic-go/internal/utils"
 	"github.com/lucas-clemente/quic-go/internal/wire"
 	"github.com/lucas-clemente/quic-go/qerr"
+	"github.com/lucas-clemente/quic-go/qtrace"
 )
 
 type mockConnection struct {
@@ -120,6 +121,7 @@ var _ = Describe("Session", func() {
 			_ chan<- handshake.TransportParameters,
 			handshakeChanP chan<- struct{},
 			_ utils.Logger,
+			_ *qtrace.Tracer,
 		) (handshake.CryptoSetup, error) {
 			handshakeChan = handshakeChanP
 			return cryptoSetup, nil
@@ -179,6 +181,7 @@ var _ = Describe("Session", func() {
 				_ chan<- handshake.TransportParameters,
 				_ chan<- struct{},
 				_ utils.Logger,
+				_ *qtrace.Tracer,
 			) (handshake.CryptoSetup, error) {
 				cookieVerify = cookieFunc
 				return cryptoSetup, nil
@@ -1602,6 +1605,7 @@ var _ = Describe("Client Session", func() {
 			_ protocol.VersionNumber,
 			_ []protocol.VersionNumber,
 			_ utils.Logger,
+			_ *qtrace.Tracer,
 		) (handshake.CryptoSetup, error) {
 			handshakeChan = handshakeChanP
 			return cryptoSetup, nil

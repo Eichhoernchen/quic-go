@@ -53,6 +53,8 @@ type client struct {
 
 var _ packetHandler = &client{}
 
+var SupportedVersions = protocol.SupportedVersions
+
 var (
 	// make it possible to mock connection ID generation in the tests
 	generateConnectionID           = protocol.GenerateConnectionID
@@ -253,6 +255,7 @@ func populateClientConfig(config *Config, createdPacketConn bool) *Config {
 		MaxIncomingStreams:                    maxIncomingStreams,
 		MaxIncomingUniStreams:                 maxIncomingUniStreams,
 		KeepAlive:                             config.KeepAlive,
+		QuicTracer:                            config.QuicTracer,
 	}
 }
 

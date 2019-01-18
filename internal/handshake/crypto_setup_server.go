@@ -13,6 +13,7 @@ import (
 	"github.com/lucas-clemente/quic-go/internal/protocol"
 	"github.com/lucas-clemente/quic-go/internal/utils"
 	"github.com/lucas-clemente/quic-go/qerr"
+	"github.com/lucas-clemente/quic-go/qtrace"
 )
 
 // QuicCryptoKeyDerivationFunction is used for key derivation
@@ -29,6 +30,7 @@ type cryptoSetupServer struct {
 	remoteAddr           net.Addr
 	scfg                 *ServerConfig
 	diversificationNonce []byte
+	QuicTracer           *qtrace.Tracer
 
 	version           protocol.VersionNumber
 	supportedVersions []protocol.VersionNumber
@@ -78,6 +80,7 @@ func NewCryptoSetup(
 	paramsChan chan<- TransportParameters,
 	handshakeEvent chan<- struct{},
 	logger utils.Logger,
+	QuicTracer *qtrace.Tracer,
 ) (CryptoSetup, error) {
 	nullAEAD, err := crypto.NewNullAEAD(protocol.PerspectiveServer, connID, version)
 	if err != nil {
@@ -100,6 +103,7 @@ func NewCryptoSetup(
 		paramsChan:           paramsChan,
 		handshakeEvent:       handshakeEvent,
 		logger:               logger,
+		QuicTracer:        QuicTracer,
 	}, nil
 }
 
@@ -116,6 +120,9 @@ func (h *cryptoSetupServer) HandleCryptoStream() error {
 		}
 
 		h.logger.Debugf("Got %s", message)
+		if h.QuicTracer != nil && h.QuicTracer.ServerGotHandshakeMsg != nil {
+			h.QuicTracer.ServerGotHandshakeMsg(HandshakeMessage2Tracer(message))
+		}
 		done, err := h.handleMessage(chloData.Bytes(), message.Data)
 		if err != nil {
 			return err
@@ -340,7 +347,11 @@ func (h *cryptoSetupServer) handleInchoateCHLO(sni string, chlo []byte, cryptoDa
 
 	var serverReply bytes.Buffer
 	message.Write(&serverReply)
+
 	h.logger.Debugf("Sending %s", message)
+	if h.QuicTracer != nil && h.QuicTracer.ServerSentInchoateCHLO != nil {
+		h.QuicTracer.ServerSentInchoateCHLO(HandshakeMessage2Tracer(message))
+	}
 	return serverReply.Bytes(), nil
 }
 
@@ -443,7 +454,11 @@ func (h *cryptoSetupServer) handleCHLO(sni string, data []byte, cryptoData map[T
 	}
 	var reply bytes.Buffer
 	message.Write(&reply)
+
 	h.logger.Debugf("Sending %s", message)
+	if h.QuicTracer != nil && h.QuicTracer.ServerSentCHLO != nil {
+		h.QuicTracer.ServerSentCHLO(HandshakeMessage2Tracer(message))
+	}
 	return reply.Bytes(), nil
 }
 

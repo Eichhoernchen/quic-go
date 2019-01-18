@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/lucas-clemente/quic-go/qtrace"
 	"github.com/lucas-clemente/quic-go/internal/ackhandler"
 	"github.com/lucas-clemente/quic-go/internal/handshake"
 	"github.com/lucas-clemente/quic-go/internal/protocol"
@@ -27,6 +28,7 @@ type packetPackerLegacy struct {
 	perspective protocol.Perspective
 	version     protocol.VersionNumber
 	cryptoSetup sealingManager
+	quicTracer  *qtrace.Tracer
 
 	divNonce []byte
 
@@ -56,6 +58,7 @@ func newPacketPackerLegacy(
 	acks ackFrameSource,
 	perspective protocol.Perspective,
 	version protocol.VersionNumber,
+	tracer *qtrace.Tracer,
 ) *packetPackerLegacy {
 	return &packetPackerLegacy{
 		cryptoStream:          cryptoStream,
@@ -70,6 +73,7 @@ func newPacketPackerLegacy(
 		getPacketNumberLen:    getPacketNumberLen,
 		packetNumberGenerator: newPacketNumberGenerator(1, protocol.SkipPacketAveragePeriodLength),
 		maxPacketSize:         getMaxPacketSize(remoteAddr),
+		quicTracer:	       tracer,
 	}
 }
 
@@ -79,6 +83,10 @@ func (p *packetPackerLegacy) PackConnectionClose(ccf *wire.ConnectionCloseFrame)
 	encLevel, sealer := p.cryptoSetup.GetSealer()
 	header := p.getHeader(encLevel)
 	raw, err := p.writeAndSealPacket(header, frames, sealer)
+
+	if p.quicTracer != nil && p.quicTracer.SentPacket != nil {
+		p.quicTracer.SentPacket(raw, int(encLevel), uint64(header.PacketNumber))
+	}
 	return &packedPacket{
 		header:          header,
 		raw:             raw,
@@ -104,6 +112,10 @@ func (p *packetPackerLegacy) MaybePackAckPacket() (*packedPacket, error) {
 		}
 	}
 	raw, err := p.writeAndSealPacket(header, frames, sealer)
+	if p.quicTracer != nil && p.quicTracer.SentPacket != nil {
+		p.quicTracer.SentPacket(raw, int(encLevel), uint64(header.PacketNumber))
+	}
+
 	return &packedPacket{
 		header:          header,
 		raw:             raw,
@@ -232,6 +244,11 @@ func (p *packetPackerLegacy) packHandshakeRetransmission(packet *ackhandler.Pack
 		frames = packet.Frames
 	}
 	raw, err := p.writeAndSealPacket(header, frames, sealer)
+
+	if p.quicTracer != nil && p.quicTracer.SentPacket != nil {
+		p.quicTracer.SentPacket(raw, int(packet.EncryptionLevel), uint64(header.PacketNumber))
+	}
+
 	return &packedPacket{
 		header:          header,
 		raw:             raw,
@@ -289,6 +306,11 @@ func (p *packetPackerLegacy) PackPacket() (*packedPacket, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if p.quicTracer != nil && p.quicTracer.SentPacket != nil {
+		p.quicTracer.SentPacket(raw, int(encLevel), uint64(header.PacketNumber))
+	}
+
 	return &packedPacket{
 		header:          header,
 		raw:             raw,

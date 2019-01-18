@@ -198,6 +198,7 @@ func newSession(
 		paramsChan,
 		handshakeEvent,
 		s.logger,
+		&s.config.QuicTracer,
 	)
 	if err != nil {
 		return nil, err
@@ -218,6 +219,7 @@ func newSession(
 		sentAndReceivedPacketManager{s.sentPacketHandler, s.receivedPacketHandler},
 		s.perspective,
 		s.version,
+	        &s.config.QuicTracer,
 	)
 	return s, s.postSetup()
 }
@@ -269,6 +271,7 @@ var newClientSession = func(
 		initialVersion,
 		negotiatedVersions,
 		s.logger,
+		&s.config.QuicTracer,
 	)
 	if err != nil {
 		return nil, err
@@ -289,6 +292,7 @@ var newClientSession = func(
 		sentAndReceivedPacketManager{s.sentPacketHandler, s.receivedPacketHandler},
 		s.perspective,
 		s.version,
+	        &s.config.QuicTracer,
 	)
 	return s, s.postSetup()
 }
@@ -345,6 +349,7 @@ func newTLSServerSession(
 		sentAndReceivedPacketManager{s.sentPacketHandler, s.receivedPacketHandler},
 		s.perspective,
 		s.version,
+        &s.config.QuicTracer,
 	)
 	if err := s.postSetup(); err != nil {
 		return nil, err
@@ -410,6 +415,7 @@ var newTLSClientSession = func(
 		sentAndReceivedPacketManager{s.sentPacketHandler, s.receivedPacketHandler},
 		s.perspective,
 		s.version,
+        &s.config.QuicTracer,
 	)
 	return s, s.postSetup()
 }

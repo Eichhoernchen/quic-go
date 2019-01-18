@@ -15,6 +15,7 @@ import (
 	"github.com/lucas-clemente/quic-go/internal/protocol"
 	"github.com/lucas-clemente/quic-go/internal/utils"
 	"github.com/lucas-clemente/quic-go/qerr"
+	"github.com/lucas-clemente/quic-go/qtrace"
 )
 
 type cryptoSetupClient struct {
@@ -29,6 +30,7 @@ type cryptoSetupClient struct {
 	cryptoStream io.ReadWriter
 
 	serverConfig *serverConfigClient
+	QuicTracer *qtrace.Tracer
 
 	stk              []byte
 	sno              []byte
@@ -78,6 +80,7 @@ func NewCryptoSetupClient(
 	initialVersion protocol.VersionNumber,
 	negotiatedVersions []protocol.VersionNumber,
 	logger utils.Logger,
+	QuicTracer *qtrace.Tracer,
 ) (CryptoSetup, error) {
 	nullAEAD, err := crypto.NewNullAEAD(protocol.PerspectiveClient, connID, version)
 	if err != nil {
@@ -101,6 +104,7 @@ func NewCryptoSetupClient(
 		negotiatedVersions: protocol.StripGreasedVersions(negotiatedVersions),
 		divNonceChan:       divNonceChan,
 		logger:             logger,
+		QuicTracer:         QuicTracer,
 	}
 	return cs, nil
 }
@@ -145,6 +149,9 @@ func (h *cryptoSetupClient) HandleCryptoStream() error {
 		}
 
 		h.logger.Debugf("Got %s", message)
+		if h.QuicTracer != nil && h.QuicTracer.ClientGotHandshakeMsg != nil {
+			h.QuicTracer.ClientGotHandshakeMsg(HandshakeMessage2Tracer(message))
+		}
 		switch message.Tag {
 		case TagREJ:
 			if err := h.handleREJMessage(message.Data); err != nil {
@@ -416,6 +423,9 @@ func (h *cryptoSetupClient) sendCHLO() error {
 	}
 
 	h.logger.Debugf("Sending %s", message)
+	if h.QuicTracer != nil && h.QuicTracer.ClientSentCHLO != nil {
+		h.QuicTracer.ClientSentCHLO(HandshakeMessage2Tracer(message))
+	}
 	message.Write(b)
 
 	_, err = h.cryptoStream.Write(b.Bytes())
